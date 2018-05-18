@@ -43,5 +43,6 @@ for table in tables:
             if is_dryrun:
                 print partition_delete_command
             else:
-                print partition_name, " now removed"
+                print partition_name, " will be removed"
                 client.execute(partition_delete_command)
+                print partition_name, " now removed"
