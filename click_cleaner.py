@@ -35,8 +35,9 @@ for table in tables:
     partitions = client.execute("SELECT DISTINCT partition, table FROM system.parts where active and table='" + table[0]  +"'")
     for partition in partitions:
         partition_name = partition[0].replace("'", "", -1)
+        partition_date = partition_name[0:4] + '-' + partition_name[5:7] +'-01 00:00:00'
         # Parse date in format '201805'
-        partition_date = datetime.datetime.strptime(partition_name, "%Y%m")
+        partition_date = datetime.datetime.strptime(partition_date, "%Y-%m-%d %H:%M:%S")
         delta = now - partition_date
         if delta.days > max_days:
             partition_delete_command = "ALTER TABLE " + dbname + "." + table[0] + " DROP PARTITION '" + partition_name + "'"
@@ -46,3 +47,4 @@ for table in tables:
                 print partition_name, " will be removed"
                 client.execute(partition_delete_command)
                 print partition_name, " now removed"
+
