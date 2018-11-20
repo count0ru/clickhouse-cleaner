@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import argparse
-import datetime
 import clickhouse_driver
 
 PARSER = argparse.ArgumentParser(description='Deleting database partitions older than date')
@@ -26,27 +25,20 @@ try:
 except TypeError:
     print "can't execute query"
 
-# get current date
-NOW = datetime.datetime.now().date()
-
 # get tables list
 TABLES = CLIENT.execute('SHOW TABLES')
 
 for table in TABLES:
     print "Process table:", table[0]
     # select all active partitions for this table
-    get_partitions_command = ("SELECT DISTINCT partition, table, max_date FROM system.parts where active and table='%s'" % table[0])
+    get_partitions_command = "SELECT DISTINCT partition FROM system.parts WHERE active AND (table = '%s') AND (max_date < toStartOfMonth(toStartOfMonth(now(), 'UTC') - %s)) AND (max_date != '0000-00-00')" % (table[0], MAX_DAYS)
     print get_partitions_command
     partitions = CLIENT.execute(get_partitions_command)
     for partition in partitions:
         # calculate delta between current date and max date in partition
-        delta = NOW - partition[2]
-        # do not delete partitions where partitioning not by date
-        if not partition[2] == datetime.datetime.strptime("00:00:00 1970-01-01", "%H:%M:%S %Y-%m-%d").date():
-            if delta.days > MAX_DAYS:
-                partition_delete_command = "ALTER TABLE %s.%s DROP PARTITION %s" % (DBNAME, table[0], partition[0])
-                if IS_DRYRUN:
-                    print partition_delete_command
-                else:
-                    print "%s now removed" % partition[0]
-                    CLIENT.execute(partition_delete_command)
+        partition_delete_command = "ALTER TABLE %s.%s DROP PARTITION %s" % (DBNAME, table[0], partition[0])
+        if IS_DRYRUN:
+            print partition_delete_command
+        else:
+            print "%s now removed" % partition[0]
+            CLIENT.execute(partition_delete_command)
